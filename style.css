@@ -1,0 +1,7 @@
+body {
+  font-size: 15pt;
+  margin: 0;
+  background: black;
+  display:flex;
+  justify-content: center;
+}
