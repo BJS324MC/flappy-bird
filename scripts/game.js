@@ -5,7 +5,7 @@ class Game {
     this.onload = () => 0;
     this.baseTime = 0;
     this.score = 0;
-    this.best = localStorage.getItem('best') || 0;
+    this.best = 0;
     this.interval = 0;
     this.gameover = false;
     this.started = false;
@@ -171,7 +171,6 @@ class Game {
     faby.link = false;
     faby.velocity = 0;
     this.best = Math.max(this.best,score);
-    localStorage.setItem('best',this.best);
     let stime = 700;
     if (fall) {
       setTimeout(e => this.playSound('die'), 400);
