@@ -4,8 +4,7 @@
   "short_name": "Flappy Bird",
   "icons": [{
     "src": "favicon.ico",
-    "sizes": "60x60",
-    "type": "image/ico"
+    "sizes": "60x60"
   }],
   "start_url": "index.html",
   "display": "standalone",
