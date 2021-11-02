@@ -22,8 +22,8 @@ class Pipe {
   }
   update(){
     this.x -= 2.4;
-    this.y1+=this.dir*0.3;
-    this.y2+=this.dir*0.3;
+    //this.y1+=this.dir*0.3;
+    //this.y2+=this.dir*0.3;
   }
   pass() {
     return !this.passed && this.x <= 60 ? this.passed = true : false;
