@@ -7,13 +7,14 @@ class Faby {
     this.link = true;
     this.sprite = sprite;
     this.flipped = false;
+    this.wave = false;
   }
   flap() {
-    this.velocity = 6;
+    this.velocity = this.velocity > 0 && this.wave ? -6 : 6;
   }
   update() {
     this.y -= this.velocity * (this.flipped ? -1:1);
-    this.velocity -= 0.3;
+    if(!this.wave) this.velocity -= 0.3;
     if (this.link) this.angle = Math.min(90, Math.max(-90, this.velocity / 2 * 9));
   }
   draw(ctx) {

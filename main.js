@@ -34,3 +34,9 @@ game.onload = lp => {
   }), 200);
   if (!lp) loop();
 };
+
+if ("serviceWorker" in navigator)
+  addEventListener("load", () => navigator.serviceWorker
+      .register("service.js")
+      .then(res => console.log("Service worker registered"))
+      .catch(err => console.error("Service worker not registered", err)))

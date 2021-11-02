@@ -5,7 +5,7 @@ class Game {
     this.onload = () => 0;
     this.baseTime = 0;
     this.score = 0;
-    this.best = localStorage.getItem('best') || 0;
+    this.best = localStorage.best || 0;
     this.interval = 0;
     this.gameover = false;
     this.started = false;
@@ -16,7 +16,9 @@ class Game {
     this.pipes = [];
     this.kills = [];
     this.playButton = false;
-    
+    this.ai = new Network([[[-0.4, 1], [0.95, -0.2]], [[-0.1, 0.086]]], x => 1 / (1 + Math.exp(-x)));
+    this.aiActive = false;
+
     this.audioCtx = new AudioContext();
 
     loadImages(
@@ -38,15 +40,15 @@ class Game {
       './assets/audio/wing.mp3').then(sounds => {
       canvas.addEventListener('click', e => {
         this.flap();
-        if(this.playButton)this.playCollide(e);
+        if (this.playButton) this.playCollide(e);
       });
       addEventListener('resize', () => this.scaleToFit());
-      addEventListener('keydown',e => {
-        if(e.ctrlKey && e.altKey && e.key === 'n') {
-          if(this.noclip){
+      addEventListener('keydown', e => {
+        if (e.ctrlKey && e.altKey && e.key === 'n') {
+          if (this.noclip) {
             this.noclip = false;
             alert('No-clip turned off.')
-          } else{
+          } else {
             this.noclip = true;
             alert('No-clip turned on.');
           }
@@ -87,16 +89,16 @@ class Game {
     this.faby.flap();
     this.playSound('wing');
   }
-  playCollide(e){
-    const {play,day} = this.sprites,
-          x = day.width/2 - play.width/2*0.7,
-          y = day.height*0.6,
-          w = play.width*0.7,
-          h = play.height*0.7,
-          ex = (e.pageX - canvas.offsetLeft)/this.scale,
-          ey = e.pageY/this.scale;
-    if(ex > x && ey > y && ex < x + w && ey < y + h) this.reset();
-    else console.log(ex,ey,canvas.offsetLeft)
+  playCollide(e) {
+    const { play, day } = this.sprites,
+      x = day.width / 2 - play.width / 2 * 0.7,
+      y = day.height * 0.6,
+      w = play.width * 0.7,
+      h = play.height * 0.7,
+      ex = (e.pageX - canvas.offsetLeft) / this.scale,
+      ey = e.pageY / this.scale;
+    if (ex > x && ey > y && ex < x + w && ey < y + h) this.reset();
+    else console.log(ex, ey, canvas.offsetLeft)
   }
   reset() {
     this.createLoop({
@@ -129,7 +131,7 @@ class Game {
     const space = 120;
     if (this.interval === 75) {
       this.interval = 0;
-      const pos = 50 + Math.random()*(this.sprites.day.height - this.sprites.base.height  - space - 100);
+      const pos = 50 + Math.random() * (this.sprites.day.height - this.sprites.base.height - space - 100);
       this.pipes.push(new Pipe({
         x: game.sprites.day.width,
         y1: pos,
@@ -154,24 +156,42 @@ class Game {
     this.canvas.width = width * this.scale;
     this.canvas.height = height * this.scale;
   }
+  aiFlap() {
+    const baseH = this.sprites.day.height - this.sprites.base.height;
+    let nexty = 0;
+    for (let pipe of this.pipes)
+      if (pipe.x > 31) {
+        nexty = pipe.y1 / baseH;
+        break
+      }
+    if (this.ai.forward([this.faby.y / baseH, nexty])[0] > 0.5) this.flap();
+  }
   update() {
-    const { faby, sprites, scale, gameover } = this, { day, base } = sprites;
+    const { faby, sprites, scale, gameover, started, noclip, pipes, baseTime, score } = this, { day, base } = sprites;
     if (faby.y > day.height - base.height) this.deathEffect(false);
-    if (game.started) {
+    if (started) {
       faby.update();
+      if(this.aiActive) this.aiFlap();
       faby.y = Math.min(day.height - base.height + 1, faby.y);
     };
-    if (!gameover) this.baseTime = (this.baseTime + 0.05) % 1;
-    this.faby.flipped = ~~(this.score / 30) % 2 === 1;
+    if (started && !gameover) this.generatePipes();
+    pipes.forEach(p => {
+      if (!gameover) {
+        p.update();
+        if (p.pass()) game.point();
+        if (!noclip && p.collide(faby)) this.deathEffect();
+      };
+    });
+    if (!gameover) this.baseTime = (baseTime + 0.05) % 1;
   }
   deathEffect(fall = true) {
-    const {gameover,faby,score,sprites,ctx} = this;
+    const { gameover, faby, score, sprites, ctx } = this;
     if (gameover) return;
     this.gameover = true;
     faby.link = false;
     faby.velocity = 0;
-    this.best = Math.max(this.best,score);
-    localStorage.setItem('best',this.best);
+    this.best = Math.max(this.best, score);
+    localStorage.best = this.best;
     let stime = 700;
     if (fall) {
       setTimeout(e => this.playSound('die'), 400);
@@ -192,10 +212,11 @@ class Game {
         start: 0,
         end: 1,
         time: 400,
-        func: (val,kill) => {
-          if(p === 0){this.kills.push(kill);p++};
-          ctx.globalAlpha = val*3/2;
-          ctx.drawImage(sprites.gameover,sprites.day.width/2 - sprites.gameover.width/2,100 - val*20);
+        func: (val, kill) => {
+          if (p === 0) { this.kills.push(kill);
+            p++ };
+          ctx.globalAlpha = val * 3 / 2;
+          ctx.drawImage(sprites.gameover, sprites.day.width / 2 - sprites.gameover.width / 2, 100 - val * 20);
           ctx.globalAlpha = 1;
         },
         stop: () => {
@@ -205,20 +226,21 @@ class Game {
             end: 1,
             time: 400,
             func: (val, kill) => {
-              if(p === 1){this.kills.push(kill);p++};
+              if (p === 1) { this.kills.push(kill);
+                p++ };
               ctx.globalAlpha = val * 3 / 2;
-              ctx.drawImage(sprites.board, sprites.day.width / 2 - sprites.board.width / 2 * 0.6, 180 - val * 20,sprites.board.width * 0.6,sprites.board.height * 0.6);
-              this.showScore(this.score,sprites.day.width / 2 - 45,220 - val * 20);
-              this.showScore(this.best,sprites.day.width / 2 + 45,220 - val * 20);
+              ctx.drawImage(sprites.board, sprites.day.width / 2 - sprites.board.width / 2 * 0.6, 180 - val * 20, sprites.board.width * 0.6, sprites.board.height * 0.6);
+              this.showScore(this.score, sprites.day.width / 2 - 45, 220 - val * 20);
+              this.showScore(this.best, sprites.day.width / 2 + 45, 220 - val * 20);
               ctx.globalAlpha = 1;
             },
             stop: () => this.playButton = true,
             preserve: true
           });
         },
-        preserve:true
+        preserve: true
       });
-    },stime)
+    }, stime)
     this.createLoop({
       start: 1,
       end: 0,
@@ -244,10 +266,10 @@ class Game {
       }
     });
   }
-  showScore(score,x,y){
+  showScore(score, x, y) {
     const scoreText = score.toString().split('').map(a => this.sprites[a]);
-    
-    scoreText.forEach((txt, i) => this.ctx.drawImage(txt,x - (txt.width / 2 * scoreText.length) + (txt.width * i),y));
+
+    scoreText.forEach((txt, i) => this.ctx.drawImage(txt, x - (txt.width / 2 * scoreText.length) + (txt.width * i), y));
   }
   point() {
     if (this.gameover) return false;
@@ -270,34 +292,26 @@ class Game {
     const { ctx, faby, scale, canvas, sprites, baseTime, score, gameover, loops, show, started, pipes, isDay, playButton } = this, { width, height } = canvas, { day, night, base, message, pipe, play } = sprites;
     ctx.save();
     ctx.scale(scale, scale);
-    ctx.drawImage(isDay ? day:night, 0, 0);
-    if (started) this.generatePipes();
-    pipes.forEach(p => {
-      if (!gameover) {
-        p.update();
-        if (p.pass()) game.point();
-        if (!this.noclip && p.collide(faby)) this.deathEffect();
-      };
-      p.draw(ctx);
-    });
+    ctx.drawImage(isDay ? day : night, 0, 0);
+    pipes.forEach(p => p.draw(ctx));
     ctx.drawImage(base, -baseTime * 48, day.height - base.height);
     faby.draw(ctx);
-    if(!gameover) this.showScore(score,day.width / 2,day.height / 8);
-    if(playButton) ctx.drawImage(play,day.width/2 - play.width/2*0.7,day.height*0.6,play.width*0.7,play.height*0.7);
+    if (!gameover) this.showScore(score, day.width / 2, day.height / 8);
+    if (playButton) ctx.drawImage(play, day.width / 2 - play.width / 2 * 0.7, day.height * 0.6, play.width * 0.7, play.height * 0.7);
     for (let i = loops.length - 1; i >= 0; i--) {
       const loop = loops[i]
       const now = Date.now();
       const time = (now - loop.start) / loop.time;
       const kill = () => loops.splice(i, 1);
       if (time >= 1) {
-        loop.func(loop.endValue,kill);
-        if(loop.ended === false) loop.stop();
+        loop.func(loop.endValue, kill);
+        if (loop.ended === false) loop.stop();
         loop.ended = true;
-        if(!loop.preserve) kill();
+        if (!loop.preserve) kill();
         continue;
       }
       const value = (1 - time) * loop.startValue + time * loop.endValue;
-      loop.func(value,kill);
+      loop.func(value, kill);
     }
     if (show && !started) ctx.drawImage(message, day.width / 2 - message.width / 2, day.height / 2 - message.height / 2);
     ctx.restore();

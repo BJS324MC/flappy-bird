@@ -1,0 +1,14 @@
+{
+  "name": "Flappy Bird",
+  "description": "The best game you have ever seen!",
+  "short_name": "Flappy Bird",
+  "icons": [{
+    "src": "favicon.ico",
+    "sizes": "60x60",
+    "type": "image/ico"
+  }],
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#36ffa4",
+  "theme_color": "#36ffa4"
+}
